@@ -393,8 +393,11 @@ Object.keys(IDX.conv || {}).forEach(v => run('конвектор ' + v, convShee
 Object.keys(IDX.wo || {}).forEach(v => run('водорозетки ' + v, woSheet(v)));
 Object.keys(IDX.boiler || {}).forEach(v => run('котёл ' + v, boilerSheet(v)));
 Object.keys(IDX.hydro || {}).forEach(v => run('гидравлика ' + v, nodeSheetB('hydro', IDX.hydro, 'img/hydro_node/', 'hydro_', [v], HY_T)));
-if (IDX.dhw) ['t24', 't18', 't12', 't24_s', 't18_s', 't12_s'].forEach(t => [['b200', 'g', t, 'mix'], ['b200', t, 'g_n']].forEach(ks =>
-    run('бойлер ГВС ' + ks.join('+'), nodeSheetB('dhw', IDX.dhw, 'img/dhw_node/', 'dhw_', ks, DH_T))));
+if (IDX.dhw) Object.keys(IDX.dhw).filter(k => /^(b|gt|e)\d+$/.test(k)).forEach(b => {
+    const g = /^gt/.test(b) ? 'go' : 'g';
+    ['t24', 't12_s'].forEach(t => [[b, g, t, 'mix'], g === 'go' ? [t, b + '_n', g + '_n'] : [b + '_n', t, g + '_n']].forEach(ks =>
+        run('бойлер ГВС ' + ks.join('+'), nodeSheetB('dhw', IDX.dhw, 'img/dhw_node/', 'dhw_', ks, DH_T))));
+});
 if (IDX.sw) {
     ['main', 'toilet', 'basin', 'shower', 'wash'].forEach(k => run('канализация ' + k, swSheet([k])));
     run('канализация санузел целиком', swSheet(['main', 'toilet', 'basin', 'shower', 'wash']));

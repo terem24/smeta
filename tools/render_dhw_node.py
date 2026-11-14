@@ -186,63 +186,186 @@ def bend(p, d1, d2, L1, L2, R=0.040):
 
 
 # ── кадры ─────────────────────────────────────────────────────────────────────
-def boiler200():
-    """OptiBase 200: патрубки на −X (к зрителю), стена за бойлером (+Y)."""
-    R, H, foot = 0.295, 1.250, 0.040
+# Бойлеры: высоты патрубков от низа кожуха (паспорта, рис. размеров), D — диаметр, H — высота, foot — ножки/цоколь.
+# OptiBase SWH-2110 (stout_4bce0e01b963, рис. 1–5): патрубки G1" НР сбоку, ГВС сверху (150/200 — G3/4", 300/500 — G1").
+OPTI = {150: dict(D=0.590, H=0.990, cold=0.195, cout=0.305, rec=0.413, cin=0.535, hot='3/4'),
+        200: dict(D=0.590, H=1.250, cold=0.195, cout=0.315, rec=0.495, cin=0.670, hot='3/4'),
+        300: dict(D=0.590, H=1.690, cold=0.195, cout=0.315, rec=0.430, cin=0.895, hot='1'),
+        500: dict(D=0.735, H=1.655, cold=0.245, cout=0.375, rec=0.625, cin=0.875, hot='1')}
+# ROMMER GT RWH-2110 (rommer_e750a8c2fb98, рис. 1–4): все патрубки сбоку; ХВС G3/4" НР, предохранительный G1/2" НР,
+# змеевик, ГВС, рециркуляция — G3/4" ВР (на них ниппели 3/4"); белый кожух, чёрные крышка и цоколь.
+GT = {150: dict(D=0.520, H=1.247, cold=0.137, cout=0.227, rec=0.527, cin=0.757, sens=0.847, safe=0.937, hot=1.027),
+      200: dict(D=0.580, H=1.238, cold=0.142, cout=0.232, rec=0.532, cin=0.737, sens=0.827, safe=0.917, hot=1.007),
+      300: dict(D=0.650, H=1.488, cold=0.161, cout=0.301, rec=0.601, cin=0.883, sens=1.025, safe=1.115, hot=1.205),
+      500: dict(D=0.710, H=1.861, cold=0.189, cout=0.329, rec=0.744, cin=1.044, sens=1.382, safe=1.502, hot=1.592)}
+# STOUT SWH-3110 (stout_a108b3c340c3, разд. 17, напольный): D 496, H 870/1200/1410; змеевик G1" сбоку — нижний
+# патрубок 202,5 от низа, верхний на C выше (260/340/340); ХВС G3/4" снизу вниз, ГВС G3/4" сверху; серебристый корпус.
+E3110 = {100: dict(D=0.496, H=0.870, cl=0.2025, C=0.260), 150: dict(D=0.496, H=1.200, cl=0.2025, C=0.340),
+         200: dict(D=0.496, H=1.410, cl=0.2025, C=0.340)}
+
+
+def coil_line(p, xl, ztop, big=True, fem=False):
+    """Змеевик: [ниппель на ВР-патрубок], американка, кран ВР/ВР, переходник ВПр-НР на трубу, труба вверх (к котлу)."""
+    if fem:
+        part('feed')
+        p = nipple(into(p, '-X'), '-X')
+    part('feed')
+    p = union34(p if fem else p, '-X', big=big)
+    part('ek')
+    p = ballvalve(into(p, '-X', 0.013 * (1.25 if big else 1.0) - 0.004), '-X', ends=('F', 'F'), stem='Z', big=big)
+    part('tube')
+    p = adapter(into(p, '-X'), '-X', fem=False)
+    pipe(bend(p, '-X', 'Z', xl, ztop - p.z))
+
+
+def hot_line(p, ax, mix, size1=False, fem=False):
+    """Выход ГВС: [ниппель], американка (1" — и муфта ВР 1" × НР 3/4"); при термосмесителе — переходник ВПр-ВР и труба к
+    клапану, без него — кран Т3 ВР/ВР (дальше разводка дома, в обвязку не входит)."""
+    if fem:
+        part('feed')
+        p = nipple(into(p, ax), ax)
+    part('feed')
+    p = union34(p, ax, big=size1)
+    if size1:
+        br = M_BRASS()
+        lathe('муфта 1x3/4', [(0.0225, 0), (0.0225, 0.024), (0.0180, 0.028)], br, tuple(into(p, ax, 0.012)), ax, segs=48)
+        p = thr(0.0128, 0.012, br, into(p, ax, 0.012) + AXV[ax] * 0.028, ax)
+    if mix:
+        part('tube')
+        p = adapter(into(p, ax), ax, fem=True)
+        pipe([p, p + AXV[ax] * 0.16])
+    else:
+        part('ek')
+        ballvalve(into(p, ax), ax, ends=('F', 'F'), stem='-Y')
+
+
+def cold_line(p, ax, size1=False, down=0.0):
+    """Вход ХВС: [муфта ВР 1" × НР 3/4"], американка 3/4", переходник ВПр-ВР, труба к узлу В1 на стене."""
+    br = M_BRASS()
+    part('feed')
+    if size1:
+        lathe('муфта 1x3/4', [(0.0225, 0), (0.0225, 0.024), (0.0180, 0.028)], br, tuple(into(p, ax, 0.010)), ax, segs=48)
+        p = thr(0.0128, 0.012, br, into(p, ax, 0.010) + AXV[ax] * 0.028, ax)
+    p = union34(into(p, ax, 0.010), ax)
+    part('tube')
+    p = adapter(into(p, ax), ax, fem=True)
+    if ax == '-X':
+        pipe(bend(p, '-X', '-Z', 0.150, max(0.05, down)))
+    else:
+        pipe([p, p + AXV[ax] * 0.12])
+    ANCH['tube:a'] = tuple(p + AXV[ax] * 0.06)
+
+
+def safety_valve(q, ax):
+    """Клапан предохранительный 6 бар RVS-0003 (фото): латунь, вход 1/2" ВР по оси ax, сброс 3/4" вниз, синий колпак вверх."""
+    part('end')
+    br = M_BRASS()
+    q2 = hx(0.026, 0.012, br, into(q, ax, 0.010), ax, 'клапан вход')
+    lathe('клапан корпус', [(0.0, 0), (0.017, 0), (0.017, 0.030), (0.0, 0.030)], br, tuple(q2), ax, segs=40)
+    cc = q2 + AXV[ax] * 0.015
+    lathe('сброс 3/4', [(0.0175, 0), (0.0175, 0.026)], br, tuple(cc), '-Z', segs=40)
+    lathe('колпак', [(0.0, 0), (0.019, 0), (0.019, 0.026), (0.016, 0.034), (0.0, 0.036)], mat('capblue', rough=0.4),
+          tuple(cc + V((0, 0, 0.012))), 'Z', segs=40, knurl=0.0188)
+    marks['end'] = tuple(cc + V((0, -0.020, 0.030)))
+
+
+def dhw_boiler(series, vol, mix=True):
+    """Бойлер патрубками к зрителю (−X), стена за ним (+Y). series: opti / gt / e3110."""
+    if series == 'opti':
+        sp = OPTI[vol]
+    elif series == 'gt':
+        sp = GT[vol]
+    else:
+        sp = E3110[vol]
+    D, H = sp['D'], sp['H']
+    R = D / 2
     yc = YW - 0.050 - R
-    part('mf')
+    foot = 0.025 if series == 'gt' else 0.040
     white = mat('bwhite', rough=0.45, coat=0.3)
     blk = mat('bblack', rough=0.55)
-    lathe('кожух', [(0.001, foot), (R * 0.90, foot), (R, foot + 0.035), (R, H - 0.040)], white, (0, yc, 0), 'Z', segs=96)
-    lathe('крышка', [(R * 1.001, H - 0.040), (R * 1.001, H - 0.014), (R * 0.97, H - 0.004), (R * 0.80, H), (0.001, H + 0.004)],
-          blk, (0, yc, 0), 'Z', segs=96)
-    for k in range(3):
-        a = math.radians(90 + 120 * k)
-        lathe('ножка', [(0.026, 0), (0.026, foot)], blk, (0.72 * R * math.cos(a), yc + 0.72 * R * math.sin(a), 0), 'Z', segs=24)
-    box('логотип', (0.060, 0.0012, 0.014), mat('logo', rough=0.5), (-0.10, yc - R * 0.98, H - 0.10))
+    part('mf')
+    if series == 'e3110':
+        silver = mat('dial', rough=0.30, metal=0.6, coat=0.2)
+        lathe('кожух', [(0.001, foot), (R * 0.93, foot), (R, foot + 0.030), (R, H - 0.050), (R * 0.97, H - 0.035)], silver, (0, yc, 0), 'Z', segs=96)
+        lathe('крышка', [(R * 0.97, H - 0.035), (R * 0.75, H - 0.012), (R * 0.30, H), (0.001, H + 0.004)], mat('dial', rough=0.4), (0, yc, 0), 'Z', segs=96)
+        box('логотип', (0.050, 0.0012, 0.012), mat('logo', rough=0.5), (-0.06, yc - R * 0.985, H - 0.13))
+        box('термометр', (0.050, 0.004, 0.036), mat('bwhite', rough=0.4), (-0.06, yc - R * 0.985, H - 0.19))
+    else:
+        lathe('кожух', [(0.001, foot), (R * 0.90, foot), (R, foot + 0.035), (R, H - 0.040)], white, (0, yc, 0), 'Z', segs=96)
+        lathe('крышка', [(R * 1.001, H - 0.040), (R * 1.001, H - 0.014), (R * 0.97, H - 0.004), (R * 0.80, H), (0.001, H + 0.004)],
+              blk, (0, yc, 0), 'Z', segs=96)
+        if series == 'gt':
+            lathe('цоколь', [(R * 1.001, foot), (R * 1.001, foot + 0.045)], blk, (0, yc, 0), 'Z', segs=96)
+            box('логотип ROMMER', (0.080, 0.0012, 0.014), mat('redring', rough=0.4), (-0.04, yc - R * 0.985, H - 0.14))
+            lathe('термометр', [(0.0, 0), (0.026, 0), (0.026, 0.008), (0.0, 0.009)], mat('dial', rough=0.3), (-0.04, yc - R * 0.97, H - 0.24), '-Y', segs=40)
+        else:
+            box('логотип', (0.060, 0.0012, 0.014), mat('logo', rough=0.5), (-0.10, yc - R * 0.98, H - 0.10))
+            lathe('заглушка ТЭН', [(0.0, 0), (0.026, 0), (0.026, 0.012), (0.0, 0.013)], blk, (-0.15, yc - R * 0.93, foot + 0.195), '-Y', segs=40)
+        for k in range(3):
+            a = math.radians(90 + 120 * k)
+            lathe('ножка', [(0.026, 0), (0.026, foot)], blk, (0.72 * R * math.cos(a), yc + 0.72 * R * math.sin(a), 0), 'Z', segs=24)
     marks['mf'] = (-0.12, yc - R * 0.96, H * 0.6)
     ni = M_NICKEL()
-    z0 = foot
-    ports = {'cold': z0 + 0.195, 'cout': z0 + 0.315, 'rec': z0 + 0.495, 'cin': z0 + 0.670}
-    for k, z in ports.items():
-        lathe('патрубок ' + k, [(0.0180, 0), (0.0180, 0.008)] + thread(0.0166, 0.024, start=0.008), ni, (-R + 0.004, yc, z), '-X', segs=40)
-    hexnut('заглушка анода', 0.050, 0.012, blk, (0.12, yc, H), 'Z')
-    # змеевик: американка 1", кран 1" ВР/ВР, переходник 22x1 НР, труба вверх (к котлу)
-    for k, xl in (('cin', 0.040), ('cout', 0.090)):
-        p = V((-R - 0.028, yc, ports[k]))
+    xp = -R - 0.028
+
+    def stub(z, r=0.0166, fem=False, name='патрубок'):
+        if fem:   # ВР-патрубок: короткая втулка с резьбой внутри
+            lathe(name, [(0.0215, 0), (0.0215, 0.024), (0.0140, 0.024), (0.0140, 0.010)], ni, (-R + 0.004, yc, z), '-X', segs=40)
+        else:
+            lathe(name, [(r + 0.0015, 0), (r + 0.0015, 0.008)] + thread(r, 0.024, start=0.008), ni, (-R + 0.004, yc, z), '-X', segs=40)
+        return V((xp, yc, z))
+    ztop = H + 0.06
+    if series == 'opti':
+        z = {k: foot + sp[k] for k in ('cold', 'cout', 'rec', 'cin')}
+        for k in z:
+            stub(z[k])
+        coil_line(V((xp, yc, z['cin'])), 0.040, ztop)
+        coil_line(V((xp, yc, z['cout'])), 0.090, ztop)
+        cold_line(V((xp, yc, z['cold'])), '-X', size1=True, down=z['cold'] - 0.08)
+        h1 = sp['hot'] == '1'
+        p = V((-0.12, yc, H + 0.004))
+        lathe('патрубок ГВС', [(0.0180, 0), (0.0180, 0.008)] + thread(0.0166 if h1 else 0.0128, 0.016, start=0.008), ni, tuple(p), 'Z', segs=40)
+        hot_line(p + V((0, 0, 0.024)), 'Z', mix, size1=h1)
+    elif series == 'gt':
+        z = {k: foot + sp[k] for k in ('cold', 'cout', 'rec', 'cin', 'safe', 'hot', 'sens')}
+        stub(z['cold'], r=0.0128)
+        for k in ('cout', 'rec', 'cin', 'hot'):
+            stub(z[k], fem=True)
+        lathe('гильза датчика', [(0.0060, 0), (0.0060, 0.020)], ni, (-R + 0.004, yc, z['sens']), '-X', segs=24)
+        lathe('патрубок 1/2', [(0.0115, 0), (0.0115, 0.006)] + thread(0.0104, 0.014, start=0.006), ni, (-R + 0.004, yc, z['safe']), '-X', segs=32)
+        coil_line(V((xp + 0.010, yc, z['cin'])), 0.040, ztop, big=False, fem=True)
+        coil_line(V((xp + 0.010, yc, z['cout'])), 0.090, ztop, big=False, fem=True)
+        cold_line(V((xp + 0.006, yc, z['cold'])), '-X', down=z['cold'] - 0.06)
+        # предохранительный клапан — прямо на свой патрубок G1/2" НР (паспорт GT, поз. 5)
+        safety_valve(V((-R - 0.016, yc, z['safe'])), '-X')
+        hot_line(V((xp + 0.010, yc, z['hot'])), '-X', mix, fem=True)
+    else:
+        zl, zu = foot + sp['cl'], foot + sp['cl'] + sp['C']
+        stub(zl)
+        stub(zu)
+        coil_line(V((xp, yc, zu)), 0.040, ztop)
+        coil_line(V((xp, yc, zl)), 0.090, ztop)
+        # ХВС снизу вниз (G3/4" НР), между ножками
+        p = V((-R * 0.35, yc, foot - 0.002))
+        lathe('патрубок ХВС', [(0.0145, 0), (0.0145, 0.006)] + thread(0.0128, 0.014, start=0.006), ni, tuple(p), '-Z', segs=32)
         part('feed')
-        p = union34(p, '-X', big=True)
-        part('ek')
-        p = ballvalve(p - V((0.013 * 1.25 - 0.004, 0, 0)), '-X', ends=('F', 'F'), stem='Z', big=True)
+        q = union34(p + V((0, 0, -0.020)), '-Z')
         part('tube')
-        p = adapter(p - V((0.012, 0, 0)), '-X', fem=False)
-        pipe(bend(p, '-X', 'Z', xl, 1.30 - ports[k]))
-    # вход ХВС: муфта ВР 1" x НР 3/4", американка 3/4", переходник ВР 3/4", труба к узлу В1 (вниз)
-    p = V((-R - 0.028, yc, ports['cold']))
-    part('feed')
-    br = M_BRASS()
-    lathe('муфта 1x3/4', [(0.0225, 0), (0.0225, 0.024), (0.0180, 0.028)], br, tuple(p + V((0.010, 0, 0))), '-X', segs=48)
-    p = thr(0.0128, 0.012, br, p - V((0.018, 0, 0)), '-X')
-    p = union34(p - V((0.010, 0, 0)), '-X')
-    part('tube')
-    p = adapter(p - V((0.012, 0, 0)), '-X', fem=True)
-    pipe(bend(p, '-X', '-Z', 0.150, ports['cold'] - 0.080))
-    ANCH['tube:a'] = tuple(p + V((-0.100, 0, 0)))
-    # выход ГВС сверху: американка 3/4", переходник ВР, труба вверх (к термосмесителю)
-    p = V((-0.12, yc, H + 0.004))
-    lathe('патрубок ГВС', [(0.0150, 0), (0.0150, 0.008)] + thread(0.0128, 0.016, start=0.008), ni, tuple(p), 'Z', segs=40)
-    part('feed')
-    p = union34(p + V((0, 0, 0.012)), 'Z')
-    part('tube')
-    p = adapter(p - V((0, 0, 0.012)), 'Z', fem=True)
-    pipe([p, p + V((0, 0, 0.18))])
-    marks['feed'] = (-R - 0.060, yc - 0.030, ports['cold'])
-    marks['ek'] = (-R - 0.110, yc - 0.035, ports['cin'] + 0.010)
-    marks['tube'] = (-R - 0.240, yc, ports['cold'] - 0.200)
+        q = adapter(into(q, '-Z'), '-Z', fem=True)
+        pipe([q, q + V((0, 0, -0.04))])
+        ANCH['tube:a'] = tuple(q + V((0, 0, -0.02)))
+        p = V((-0.10, yc, H + 0.004))
+        lathe('патрубок ГВС', [(0.0150, 0), (0.0150, 0.008)] + thread(0.0128, 0.016, start=0.008), ni, tuple(p), 'Z', segs=40)
+        hot_line(p + V((0, 0, 0.024)), 'Z', mix)
+    marks['feed'] = (xp - 0.030, yc - 0.030, (foot + sp.get('cold', 0.20)) if series != 'e3110' else foot + sp['cl'])
+    marks['ek'] = (xp - 0.080, yc - 0.035, ztop - 0.30 if series == 'e3110' else foot + sp['cin'] + 0.010)
+    marks['tube'] = (xp - 0.200, yc, foot + 0.10)
 
 
-def group(mix=True):
-    """Узел входа ХВС В1 на стене, поток снизу вверх. Отводы тройников — к зрителю (−Y), крестовина — вбок."""
+def group(mix=True, own=False):
+    """Узел входа ХВС В1 на стене, поток снизу вверх. Отводы тройников — к зрителю (−Y), крестовина — вбок.
+    own — у бойлера свой патрубок предохранительного клапана (ROMMER GT): тройника бака нет, бак — на отводе
+    крестовины трубой, на втором отводе — дренажный кран."""
     y = YW - 0.070
     p = V((0.0, y, 0.0))
     part('ek')
@@ -261,26 +384,26 @@ def group(mix=True):
     marks['mount'] = (0.0, y - 0.022, p.z - 0.032)
     part('feed')
     p = nipple(p - V((0, 0, 0.012)), 'Z')
-    p, b = tee(p - V((0, 0, 0.012)), 'Z', '-Y')
-    part('tube')
-    q = adapter(into(b, '-Y'), '-Y', fem=False)
-    pipe(bend(q, '-Y', '-X', 0.030, 0.10))
-    ANCH['tube:a'] = tuple(q + V((-0.06, -0.070, 0)))
-    part('feed')
-    p = nipple(p - V((0, 0, 0.012)), 'Z')
+    if not own:
+        p, b = tee(p - V((0, 0, 0.012)), 'Z', '-Y')
+        part('tube')
+        q = adapter(into(b, '-Y'), '-Y', fem=False)
+        pipe(bend(q, '-Y', '-X', 0.030, 0.10))
+        ANCH['tube:a'] = tuple(q + V((-0.06, -0.070, 0)))
+        part('feed')
+        p = nipple(p - V((0, 0, 0.012)), 'Z')
     p, bs, bd = tee(p - V((0, 0, 0.012)), 'Z', '-X', 'X')
     marks['feed'] = (0.0, y - 0.020, p.z - 0.026)
-    # предохранительный клапан 6 бар на ниппеле 3/4" x 1/2" (вход ВР 1/2" — вбок), сброс 3/4" вниз
-    q = nipple(into(bs, '-X'), '-X', r2=0.0104)
-    part('end')
-    br = M_BRASS()
-    q2 = hx(0.026, 0.012, br, into(q, '-X', 0.010), '-X', 'клапан вход')
-    lathe('клапан корпус', [(0.0, 0), (0.017, 0), (0.017, 0.030), (0.0, 0.030)], br, tuple(q2), '-X', segs=40)
-    cc = q2 + V((-0.015, 0, 0))
-    lathe('сброс 3/4', [(0.0175, 0), (0.0175, 0.026)], br, tuple(cc), '-Z', segs=40)
-    lathe('колпак', [(0.0, 0), (0.019, 0), (0.019, 0.026), (0.016, 0.034), (0.0, 0.036)], mat('capblue', rough=0.4),
-          tuple(cc + V((0, 0, 0.012))), 'Z', segs=40, knurl=0.0188)
-    marks['end'] = tuple(cc + V((0, -0.020, 0.030)))
+    if own:
+        # бак ГВС на отвод крестовины трубой (предохранительный клапан стоит на бойлере)
+        part('tube')
+        q = adapter(into(bs, '-X'), '-X', fem=False)
+        pipe(bend(q, '-X', 'Z', 0.030, 0.10))
+        ANCH['tube:a'] = tuple(q + V((-0.06, 0, 0.06)))
+    else:
+        # предохранительный клапан 6 бар на ниппеле 3/4" x 1/2" (вход ВР 1/2" — вбок), сброс 3/4" вниз
+        q = nipple(into(bs, '-X'), '-X', r2=0.0104)
+        safety_valve(q, '-X')
     # дренажный кран на второй отвод крестовины
     part('ek')
     ballvalve(into(bd, 'X'), 'X', ends=('M', 'M'), stem='-Y')
@@ -381,10 +504,13 @@ def build():
     for cl in list(ob.users_collection):
         cl.objects.unlink(ob)
     coll('sheath').objects.link(ob)
-    if VAR == 'b200':
-        boiler200()
-    elif VAR in ('g', 'g_n'):
-        group(mix=(VAR == 'g'))
+    # бойлер: b<объём> — OptiBase, gt<объём> — ROMMER GT, e<объём> — STOUT SWH-3110; «_n» — без термосмесителя
+    import re as _re
+    m = _re.match(r'^(b|gt|e)(\d+)(_n)?$', VAR)
+    if m:
+        dhw_boiler({'b': 'opti', 'gt': 'gt', 'e': 'e3110'}[m.group(1)], int(m.group(2)), mix=not m.group(3))
+    elif VAR in ('g', 'g_n', 'go', 'go_n'):
+        group(mix=not VAR.endswith('_n'), own=VAR.startswith('go'))
     elif VAR.startswith('t'):
         tank(int(VAR[1:3]), VAR.endswith('_s'))
     elif VAR == 'mix':

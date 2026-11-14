@@ -46842,7 +46842,7 @@ const app = {
     // SDG-0001, s под сервопривод SDG-0003, m термостатическая SDG-0002), tools/render_hydro_node.py.
     HYDRO_DIR: 'img/hydro_node/',
     HYDRO_LAB_RE: {
-        end: /^Группа (насосная|быстрого)/i, kit: /^Насос циркуляционный/i, head: /^Сервопривод/i,
+        end: /^Группа (насосная|быстрого)/i, kit: /^Насос (циркуляционный|частотный)/i, head: /^Сервопривод/i,
         feed: /^Многофункциональный узел|^Заглушка 1\/2/i, mount: /^Воздухоотводчик|^Клапан отсекающий/i,
         ek: /^Кран шаровой 1\/2/i, tube: /^Муфта переходная ВР 1 1\/2/i
     },
@@ -46857,13 +46857,24 @@ const app = {
         if (eq.some(it => /^(RDG-|SDG-000[1-7]-00(20|32))/i.test(sku(it)))) return null;
         const g = 'd'.repeat(qty(/^SDG-0001-002501$/i)) + 's'.repeat(qty(/^SDG-0003-002501$/i)) + 'm'.repeat(qty(/^SDG-0002-002501$/i));
         if (!g.length || g.length > np) return null;
-        return { key: np + '_' + g, col: sku(col), np, g };
+        // воздухоотводчик на обратке всех групп — кадр «…_v», снят хотя бы с одной — кадр с заглушками
+        const rv = this._gbmRetVents;
+        const v = rv && rv.n > 0 && rv.ret >= rv.n ? '_v' : '';
+        // насос групп — свой кадр по модели (фото каталога): SPC-0011 — основной, остальные «…_p<вид>»;
+        // насос без кадра (другой бренд, другая длина) — листа нет, чтобы не показать чужой насос
+        const PUMPS = { 'SPC-0011-2560180': ['', 'STOUT 25/60-180'], 'SPC-0010-2560180': ['_p10', 'STOUT 25/60-180 Std'],
+            'SPC-0002-2560180': ['_pmini', 'STOUT Mini 25/60-180, частотный'], 'SPC-0003-2560180': ['_pminipro', 'STOUT Mini Pro 25/60-180, частотный'],
+            'RCP-0004-2560180': ['_pprofi', 'ROMMER PROFI 25/60-180'], 'RCP-0030-2560180': ['_pevo', 'ROMMER EVO 25/60-180, частотный'] };
+        const pumpIt = eq.find(it => /^(SPC|RCP)-/i.test(sku(it)));
+        const pm = pumpIt ? PUMPS[sku(pumpIt).toUpperCase()] : PUMPS['SPC-0011-2560180'];
+        if (!pm) return null;
+        return { key: np + '_' + g + v + pm[0], col: sku(col), np, g, retV: !!v, pump: pm[1] };
     },
     renderHydroNodeScheme: function () {
         if (!this.wmPreviewOn()) return '';
         const hk = this.hydroFrameKey();
         if (!hk) return '';
-        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=1');
+        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=2');
         if (!idx || !idx[hk.key] || !idx[hk.key].o) return '';
         const RU = { d: 'прямая', s: 'под сервопривод', m: 'термостатическая' };
         const kinds = Array.from(new Set(hk.g.split(''))).map(c => RU[c]);
@@ -46871,8 +46882,9 @@ const app = {
             mf: ['Коллектор с гидроразделителем', `SDG-0018 DN25, ${hk.np} пары выходов`],
             name: 'Коллектор и насосные группы', rows: [`Групп: ${hk.g.length} — ${kinds.join(', ')}`, 'Слева обратка, справа подача'] }];
         const T = {
-            end: ['Группы насосные DN25', kinds.join(', ')], kit: ['Насос циркуляционный 25/60-180', 'на подаче каждой группы'],
-            feed: ['Узлы МУ-25М и заглушки', 'два узла на группу, отводы 1/2" закрыты'], mount: ['Воздухоотводчик с отсечным клапаном', 'на узле подачи каждой группы'],
+            end: ['Группы насосные DN25', kinds.join(', ')], kit: ['Насос циркуляционный', `${hk.pump}, на подаче каждой группы`],
+            feed: ['Узлы МУ-25М и заглушки', 'два узла на группу, отводы 1/2" закрыты'],
+            mount: ['Воздухоотводчики с отсечным клапаном', hk.retV ? 'на подаче и обратке каждой группы' : 'на подаче групп, на обратке заглушка'],
             ek: ['Кран слива 1/2"', 'на торце коллектора, второй торец — заглушка'], tube: ['Муфты 1 1/2" × 1"', 'к котлу: подача слева, обратка справа']
         };
         if (/s/.test(hk.g)) T.head = ['Сервопривод с датчиком', 'на трёхходовой клапан группы'];
@@ -46893,22 +46905,30 @@ const app = {
         if (!this.wmPreviewOn()) return '';
         const eq = (this.currentEquipmentList || []);
         const sku = it => String(it.displaySku || it.id || '');
-        const boiler = eq.find(it => /^SWH-2110-000200$/i.test(sku(it)));
+        // бойлер — кадр по серии и объёму: OptiBase «b<л>», ROMMER GT «gt<л>», STOUT SWH-3110 «e<л>» (у 3110 на 190 л кадр «e200»)
+        const BK = { 'SWH-2110': ['b', 'OptiBase'], 'RWH-2110': ['gt', 'ROMMER GT'], 'SWH-3110': ['e', 'STOUT'] };
+        const boiler = eq.find(it => /^(SWH-2110|RWH-2110|SWH-3110)-000(100|150|190|200|300|500)$/i.test(sku(it)));
+        const bk = boiler ? BK[sku(boiler).slice(0, 8).toUpperCase()] : null;
+        const bvol = boiler ? (sku(boiler).slice(-3).replace(/^0+/, '') === '190' ? '200' : sku(boiler).slice(-3).replace(/^0+/, '')) : '';
         const g23 = eq.filter(it => /^2\.3/.test(String(it.group || '')));
         const tank = g23.find(it => /^STW-0015-0000(24|18|12)$/i.test(sku(it)));
         if (!boiler || !tank || !this._dhwPipe || !this._dhwPipe.cold) return '';
         const mix = g23.find(it => /^SVM-0125-/i.test(sku(it)));
-        const idx = this.nodeIndex('dhw', this.DHW_DIR, 'dhw.json?v=1');
+        const idx = this.nodeIndex('dhw', this.DHW_DIR, 'dhw.json?v=2');
         if (!idx) return '';
         const vol = sku(tank).slice(-2);
         const plan = [
-            { key: 'b200', it: boiler, mf: ['Бойлер OptiBase 200 л', 'змеевик, вход ХВС, выход ГВС'], name: 'Бойлер', rows: ['Патрубки к зрителю', 'Змеевик — к котлу'] },
-            { key: mix ? 'g' : 'g_n', it: null, mf: null, name: 'Узел входа ХВС', rows: ['На стене, поток снизу вверх', 'К бойлеру — трубой'] },
+            // без термосмесителя на выходе ГВС у бойлера кран Т3, а не переходник под трубу — кадр «…_n»
+            { key: bk[0] + bvol + (mix ? '' : '_n'), it: boiler, mf: [`Бойлер ${bk[1]} ${sku(boiler).slice(-3).replace(/^0+/, '')} л`, 'змеевик, вход ХВС, выход ГВС'], name: 'Бойлер', rows: ['Патрубки к зрителю', 'Змеевик — к котлу'] },
+            // у ROMMER GT свой патрубок предохранительного клапана: на узле входа нет тройника бака — кадр «go…»
+            { key: (bk[0] === 'gt' ? 'go' : 'g') + (mix ? '' : '_n'), it: null, mf: null, name: 'Узел входа ХВС', rows: ['На стене, поток снизу вверх', 'К бойлеру — трубой'] },
             // крепление STOUT SAC-0030 (пластина и хомут) — свой кадр «…_s», иначе L-кронштейн ASKON
             { key: 't' + vol + (eq.some(it => /^SAC-0030-000825$/i.test(sku(it))) ? '_s' : ''), it: tank, mf: [`Бак ГВС ${vol} л`, 'на стене, выше узла входа'], name: 'Бак ГВС', rows: ['На креплении к стене', 'К тройнику узла — трубой'] }
         ];
         // без термосмесителя бак — в середину: крайним справа его сноски крепления и узла SVS-0008 пересекались
-        if (!mix) plan.splice(1, 0, plan.splice(2, 1)[0]);
+        // у ROMMER GT (узел «go» без тройника бака) бак — крайним слева: в середине и справа его сноска крепления
+        // пересекала сноски узла входа
+        if (!mix) { if (bk[0] === 'gt') plan.unshift(plan.pop()); else plan.splice(1, 0, plan.splice(2, 1)[0]); }
         if (mix) plan.push({ key: 'mix', it: mix, mf: ['Термостатический клапан ГВС', 'на выходе горячей воды в дом'], name: 'Термосмеситель', rows: ['Горячий вход — от бойлера', 'Холодный — от тройника подмеса'] });
         const frames = [];
         this._dhSku = {};
@@ -94512,7 +94532,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // какая деталь, показывает сама схема (она строится из своей конфигурации,
                 // а не из строк сметы). Пометка назначения остаётся только у строки, где
                 // она у всех слитых единиц одна и та же.
-                let existing = bill.find(x => x.id === finalItem.id &&
+                // item.noMerge — строка, которую монтажник снимает отдельно от строк того же артикула (воздухоотводчик
+                // на обратке групп): не склеивается ни при какой группировке, иначе её ключ терялся бы в чужой строке
+                let existing = item.noMerge ? null : bill.find(x => x.id === finalItem.id && !x.noMerge &&
                     (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name)));
                 if (existing) {
                     if (existing.portTag !== finalItem.portTag) delete existing.portTag;
@@ -96161,6 +96183,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this._tankLoadKitInfo = null;
         this._tankKitCount = 0;   // сколько внешних клапанов загрузки бойлера легло в смету (см. addTankLoadingKit)
         this._dhwPipe = null;     // соединения узла бойлера трубой — ставит обвязка водонагревателя, считает блок труб
+        this._gbmRetVents = null; // воздухоотводчики обратки на узлах МУ-25М (сколько групп и сколько из них с ними)
         // Котёл, у которого переключающий клапан бойлера встроен (dhwValve — Vaillant VU,
         // Navien Deluxe One / NGB210 SYS, Haier NeoSlim 1.18/1.24): внешний комплект ему не нужен. Датчик бойлера
         // ставим только если он не в коробке (dhwSensor — артикул докупаемого датчика,
@@ -97924,21 +97947,40 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // одинаковые id и название сливаются в подразделе в одну строку с общим
                 // количеством — так и задумано, это один и тот же товар (см. addToBill),
                 // и ранги -0,2/-0,1 держат пару вместе.
+                // Воздухоотводчики узлов МУ-25М (решение владельца, 13.11.2026): на верхнем отводе 1/2" узла ПОДАЧИ —
+                // всегда (горячая вода после котла несёт выделившийся газ, насос гонит её вверх), на узле ОБРАТКИ — по
+                // умолчанию тоже (снимает воздух при пуске и заполнении), но отдельной строкой со своим ключом: её можно
+                // снять в смете или уменьшить количество — тогда отсекающих клапанов под ней столько же меньше, а на
+                // освободившиеся отводы автоматически встают заглушки 1/2". Своё название строки («… (обратка групп)»)
+                // нужно, чтобы смета не склеила её со строкой подачи (ключ склейки — артикул, подраздел и название).
+                const _retKey = catalog.air_vent_12 ? catalog.air_vent_12.id + '_ret' : null;
+                const _retOff = !!(_retKey && this.state.optItems && this.state.optItems[_retKey]);
+                const _retOv = (_retKey && this.state.qtyOverrides && this.state.qtyOverrides[_retKey] !== undefined)
+                    ? Math.max(0, parseInt(this.state.qtyOverrides[_retKey], 10) || 0) : null;
+                const _retN = !_retKey || _retOff ? 0 : Math.min(gbmNodeQty, _retOv === null ? gbmNodeQty : _retOv);
+                this._gbmRetVents = { n: gbmNodeQty, ret: _retN };
                 if (catalog.air_vent_12) {
                     addToBill({ ...catalog.air_vent_12, alts: catalog.air_vent_12_alts || [], noCheapenAlts: true, sortRank: -0.2 },
-                        gbmNodeQty, "Автоматический воздухоотводчик на верхний отвод 1/2\" присоединительного узла — воздух снимается с каждой насосной группы, а не только с гидроразделения. По одному на группу DN25.", grpHydro);
+                        gbmNodeQty, "Автоматический воздухоотводчик на верхний отвод 1/2\" присоединительного узла ПОДАЧИ — горячая вода после котла несёт выделившийся при нагреве газ, насос группы гонит её вверх, и верхняя точка линии подачи снимает его до системы. По одному на группу DN25.", grpHydro);
+                    addToBill({ ...catalog.air_vent_12, name: catalog.air_vent_12.name + ' (обратка групп)', originalId: _retKey, noMerge: true,
+                        alts: catalog.air_vent_12_alts || [], noCheapenAlts: true, sortRank: -0.19 },
+                        gbmNodeQty, "Автоматический воздухоотводчик на верхний отвод 1/2\" присоединительного узла ОБРАТКИ — снимает воздух, который остаётся в верхней точке обратки при пуске и заполнении системы. Можно убрать из сметы или уменьшить количество: на освободившиеся отводы смета сама поставит заглушки 1/2\", отсекающие клапаны под ними уйдут.", grpHydro);
                 }
                 if (catalog.air_vent_check_12) {
                     addToBill({ ...catalog.air_vent_check_12, sortRank: -0.1 },
-                        gbmNodeQty, "Отсекающий обратный клапан под воздухоотводчиком: поплавковую головку можно снять и заменить, не сливая контур. По одному на воздухоотводчик.", grpHydro);
+                        gbmNodeQty, "Отсекающий обратный клапан под воздухоотводчиком подачи: поплавковую головку можно снять и заменить, не сливая контур. По одному на воздухоотводчик.", grpHydro);
+                    if (_retN > 0) addToBill({ ...catalog.air_vent_check_12, name: catalog.air_vent_check_12.name + ' (обратка групп)',
+                        originalId: catalog.air_vent_check_12.id + '_ret', noMerge: true, sortRank: -0.09 },
+                        _retN, "Отсекающий обратный клапан под воздухоотводчиком обратки — по одному на воздухоотводчик обратки; убираются вместе с ними.", grpHydro);
                 }
                 // У корпуса МУ-25М ДВА отвода 1/2" ВР — на торце и сбоку (маркировка «1/2"» на обоих, фото
                 // изделия у продавцов, 13.11.2026), третий отвод 1" ВР — к трубе системы. На группу (2 узла) малых
-                // отводов четыре: один под воздухоотводчик, три закрываются заглушками. До 13.11.2026 считалось
-                // по одной заглушке на группу — три отвода оставались открытыми.
+                // отводов четыре: верхний отвод подачи — воздухоотводчик, верхний отвод обратки — воздухоотводчик или
+                // заглушка, два торцевых (к стене) — заглушки.
                 if (catalog.plug_12) {
+                    const _plugN = gbmNodeQty * 2 + (gbmNodeQty - _retN);
                     addToBill({ ...catalog.plug_12, sortRank: -0.05 },
-                        gbmNodeQty * 3, "Заглушка 1/2\" НР на свободные отводы присоединительных узлов: у каждого узла МУ-25М два отвода 1/2\" ВР (торцевой и боковой), на группу их четыре — один занят воздухоотводчиком, три закрываются. По три на группу.", grpHydro);
+                        _plugN, `Заглушка 1/2" НР на свободные отводы присоединительных узлов: у каждого узла МУ-25М два отвода 1/2" ВР (торцевой и боковой), на группу их четыре — торцевые закрываются всегда, верхний отвод обратки — когда на нём нет воздухоотводчика${_retN < gbmNodeQty ? ` (снято воздухоотводчиков обратки: ${gbmNodeQty - _retN})` : ''}.`, grpHydro);
                 }
             }
 

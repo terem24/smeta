@@ -391,6 +391,83 @@ def coll(name):
     return COLL[name]
 
 
+PHOTO_MATS = {}
+
+
+def photo_mat(path, rough=0.45, coat=0.2):
+    """Материал с фото каталога как текстурой (надписи, шильдики, кнопки — ровно как у изделия)."""
+    k = (path, rough, coat)
+    if k in PHOTO_MATS:
+        return PHOTO_MATS[k]
+    m = bpy.data.materials.new('photo_%d' % len(PHOTO_MATS))
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes['Principled BSDF']
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = bpy.data.images.load(path, check_existing=True)
+    tex.extension = 'CLIP'
+    nt.links.new(tex.outputs['Color'], b.inputs['Base Color'])
+    b.inputs['Roughness'].default_value = rough
+    try:
+        b.inputs['Coat Weight'].default_value = coat
+    except Exception:
+        pass
+    PHOTO_MATS[k] = m
+    return m
+
+
+def photo_disc(name, path, crop, loc, axis, radius, rot=0.0, segs=64, size=(600, 600)):
+    """Круг с вырезом фото: crop = (cx, cy, rx, ry) в пикселях фото (эллипс снятого под углом торца
+    разворачивается в круг), loc — центр, axis — нормаль круга (к зрителю), rot — поворот выреза, рад."""
+    W, H = size
+    cx, cy, rx, ry = crop
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new('UVMap')
+    c0 = bm.verts.new((0, 0, 0))
+    ring = []
+    for i in range(segs):
+        a = 2 * math.pi * i / segs
+        ring.append((bm.verts.new((radius * math.cos(a), radius * math.sin(a), 0)), a))
+    for i in range(segs):
+        (v1, a1), (v2, a2) = ring[i], ring[(i + 1) % segs]
+        f = bm.faces.new((c0, v1, v2))
+        for lp in f.loops:
+            if lp.vert is c0:
+                u, v = cx / W, 1 - cy / H
+            else:
+                aa = (a1 if lp.vert is v1 else a2) + rot
+                u, v = (cx + rx * math.cos(aa)) / W, 1 - (cy - ry * math.sin(aa)) / H
+            lp[uvl].uv = (u, v)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(photo_mat(path))
+    ob = bpy.data.objects.new(name, me)
+    ob.matrix_world = Matrix.Translation(Vector(loc)) @ AXIS[axis]
+    return link(ob)
+
+
+def photo_quad(name, path, rect, loc, mtx, w, h, size=(600, 600)):
+    """Прямоугольная наклейка с фото: rect = (x0, y0, x1, y1) в пикселях фото, w × h — размер в мире,
+    mtx — поворот (локальные X вправо, Y вверх, Z — нормаль)."""
+    W, H = size
+    x0, y0, x1, y1 = rect
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new('UVMap')
+    vs = [bm.verts.new((-w / 2, -h / 2, 0)), bm.verts.new((w / 2, -h / 2, 0)), bm.verts.new((w / 2, h / 2, 0)), bm.verts.new((-w / 2, h / 2, 0))]
+    uvs = [(x0 / W, 1 - y1 / H), (x1 / W, 1 - y1 / H), (x1 / W, 1 - y0 / H), (x0 / W, 1 - y0 / H)]
+    f = bm.faces.new(vs)
+    for lp, uv in zip(f.loops, uvs):
+        lp[uvl].uv = uv
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(photo_mat(path))
+    ob = bpy.data.objects.new(name, me)
+    ob.matrix_world = Matrix.Translation(Vector(loc)) @ mtx
+    return link(ob)
+
+
 def link(ob, group='solid'):
     coll(group).objects.link(ob)
     ob['part'] = PART[0]
