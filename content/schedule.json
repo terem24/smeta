@@ -459,9 +459,9 @@
    "freq": 7200,
    "audience": "owner",
    "data_block": "расценки за точку",
-   "status": "queued",
+   "status": "published",
    "date": "2026-11-05",
-   "published_at": null,
+   "published_at": "2026-11-14",
    "words": 690
   },
   {
