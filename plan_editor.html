@@ -1140,7 +1140,7 @@ function typeChanged() {
 
 // Короткая строка режима для полоски шагов; в правой колонке текст длиннее.
 var MODE_BAR = {
-  scale: 'Кликните на плане две точки известного размера — потом впишете его длину в метрах',
+  scale: 'Кликните две точки подписанного размера — потом впишете число как на плане (760, 2600 или 0,9м)',
   room: 'Кликните внутри комнаты — контур найдётся по стенам',
   rect: 'Растяните рамку по комнате мышью',
   poly: 'Кликайте углы контура по порядку; двойной клик — замкнуть',
@@ -1177,8 +1177,14 @@ function askText(o, cb) {
     ((o.chips || []).length ? '<div class="grid">' + o.chips.map(function (c) {
       return '<button data-v="' + esc(c.v) + '">' + esc(c.t || c.v) + '</button>'; }).join('') + '</div>' : '') +
     '<div class="row"><input type="text" inputmode="' + (o.mode || 'text') + '" value="' + esc(o.def || '') + '"><button class="go" data-ok="1">OK</button></div>' +
+    (o.live ? '<div class="live" style="margin-top:8px;font-size:13px;opacity:.8;min-height:18px"></div>' : '') +
     '<div style="margin-top:8px;text-align:right"><button class="ghost" data-cancel="1">Отмена</button></div></div>';
   var inp = div.querySelector('input'), fin = false;
+  if (o.live) {
+    var lv = div.querySelector('.live');
+    var upd = function () { lv.textContent = o.live(inp.value) || ''; };
+    inp.addEventListener('input', upd); upd();
+  }
   var done = function (v) { if (fin) return; fin = true; div.remove(); cb(v); };
   div.onclick = function (e) {
     var b = e.target.closest ? e.target.closest('button') : null;
@@ -1196,6 +1202,27 @@ function askText(o, cb) {
   inp.focus(); inp.select();
 }
 
+/**
+ * Длина отрезка из того, что вписали: на планах размеры подписаны как есть (760, 2600),
+ * а не в метрах. Без единицы: от 1000 — миллиметры, 20–999 — сантиметры, меньше 20 — метры.
+ * Единицу можно написать явно: «900мм», «2,6м», «260см». Возвращает метры или 0.
+ */
+function parseScaleLen(s) {
+  var t = String(s == null ? '' : s).toLowerCase().replace(',', '.').replace(/\s+/g, '');
+  var mt = /^(\d+(?:\.\d+)?)(мм|mm|см|cm|м|m)?$/.exec(t);
+  if (!mt) return 0;
+  var n = parseFloat(mt[1]), u = mt[2];
+  if (!(n > 0)) return 0;
+  if (!u) u = n >= 1000 ? 'мм' : n >= 20 ? 'см' : 'м';
+  return (u === 'мм' || u === 'mm') ? n / 1000 : (u === 'см' || u === 'cm') ? n / 100 : n;
+}
+function scaleLenNote(s) {
+  var m = parseScaleLen(s);
+  if (!m) return String(s || '').trim() ? 'Не понял число. Пример: 760 или 2,6м' : '';
+  return 'Принято: ' + String(Math.round(m * 1000) / 1000).replace('.', ',') + ' м' +
+    (/[a-zа-я]/i.test(String(s)) ? '' : ' (число без единицы — как на плане; для метров допишите «м»)');
+}
+
 /** Длина отрезка масштаба: самые частые значения монтажника — первыми, последнее введённое — в поле. */
 function askScaleLen(cb) {
   var st = { last: '', cnt: {} };
@@ -1203,9 +1230,9 @@ function askScaleLen(cb) {
   var chips = Object.keys(st.cnt).sort(function (a, b) { return st.cnt[b] - st.cnt[a]; });
   ['0,9', '1,0', '2,0', '3,0'].forEach(function (d) { if (chips.indexOf(d) < 0) chips.push(d); });
   chips = chips.slice(0, 5).map(function (v) { return { v: v, t: v === '0,9' ? '0,9 · дверь' : v }; });
-  askText({ title: 'Длина отрезка', sub: 'Сколько метров между двумя отмеченными точками?', mode: 'decimal',
-            chips: chips, def: st.last || '1,0' }, function (v) {
-    var m = parseFloat(String(v == null ? '' : v).replace(',', '.').replace(/\s+/g, ''));
+  askText({ title: 'Длина отрезка', sub: 'Впишите размер, как он подписан на плане (например 760 или 2600), или в метрах: 0,9м.', mode: 'text',
+            chips: chips, def: st.last || '', live: scaleLenNote }, function (v) {
+    var m = parseScaleLen(v);
     if (m > 0) {
       var key = String(Math.round(m * 100) / 100).replace('.', ',');
       if (/^\d+$/.test(key)) key += ',0';
@@ -1226,7 +1253,7 @@ function setMode(m) {
   });
   // в мастере раскладки «что делать» говорит строка шага, а справа остаётся
   // итог последнего действия («найдено комнат: 6») — режим его не стирает
-  if (!UFH) hint(mode === 'scale' ? 'Кликните две точки известного отрезка (стена, дверь 0.9 м…)'
+  if (!UFH) hint(mode === 'scale' ? 'Кликните две точки подписанного размера (стена 760, дверь 900…)'
     : mode === 'room' ? 'Кликните внутри комнаты — контур найдётся по стенам.'
     : mode === 'rect' ? 'Растяните прямоугольник по комнате мышью — края прилипнут к стенам.'
     : mode === 'poly' ? 'Кликайте углы контура; двойной клик — замкнуть.'
@@ -5925,7 +5952,7 @@ cv.addEventListener('click', function (e) {
       askScaleLen(function (ans) {
         // «1,5» и «1.5» — одно и то же: на телефоне и в русской раскладке
         // запятая под рукой, а точка нет.
-        var m = parseFloat(String(ans == null ? '' : ans).replace(',', '.').replace(/\s+/g, ''));
+        var m = parseScaleLen(ans);
         if (m > 0) {
           pushUndo('scale');
           F().pxPerM = d / m; F().scaleSrc = 'manual';
@@ -8092,8 +8119,8 @@ function wzBody(id) {
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
   if (id === 'scale') return { noNext: true, acts: T("setMode('scale')", 'Задать масштаб', mode === 'scale') + B('autoScale()', 'Подобрать ещё раз'),
-    tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: отметьте на плане отрезок известной длины.' : '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
-    tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
+    tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: кликните два конца любого подписанного размера и впишите число как на плане (760, 2600).' : '<b>Масштаб не нашёлся.</b> Кликните два конца любого подписанного размера и впишите число как на плане.',
+    tips: [['2 клика', 'по краям любого размера с чертежа'], ['Впишите число', 'как на плане: 760, 2600 или 0,9м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + T('wzRect()', 'Обвести рамкой', mode === 'rect'),
     tx: 'Проверьте найденные комнаты и впишите названия — по ним они перейдут в расчёт.',
     tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']], diag: reqHtml('base', true) };
@@ -9481,8 +9508,8 @@ function pjBody(id) {
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("enterMode('scale')", 'Задать вручную'),
-    tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: отметьте на плане отрезок известной длины.' : '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
-    tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
+    tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: кликните два конца любого подписанного размера и впишите число как на плане (760, 2600).' : '<b>Масштаб не нашёлся.</b> Кликните два конца любого подписанного размера и впишите число как на плане.',
+    tips: [['2 клика', 'по краям любого размера с чертежа'], ['Впишите число', 'как на плане: 760, 2600 или 0,9м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
     tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам и сопоставятся с расчётом.',
     tips: [['Авто', 'тёплый пол, котельная, санузлы'], ['✕', 'убрать лишнюю зону'], ['«Обвести кликом»', 'если комната не нашлась']] };
