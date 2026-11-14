@@ -54,31 +54,29 @@ def _font(px, bold=False):
 
 
 def polis_panel():
-    """Плита 157 x 74 мм по фронтальному чертежу паспорта (рис. 10, вид спереди): слева ручка термостата, над ней
-    указатель, три клавиши L1-L3 (над первой и третьей — кольцевые лампы «СЕТЬ» и «АВАРИЯ»), справа манометр."""
+    """Плита 156,5 x 70 мм по фронтальному чертежу паспорта (рис. 10, вид спереди, замер по векторам чертежа): скругление 13,
+    над ручкой термостата контурный указатель, над клавишами L1/L3 кольцевые лампы «СЕТЬ» и «АВАРИЯ», под клавишами
+    L1-L3. Ручка, клавиши и манометр — объёмные детали (render_boiler_node.py), здесь только плита и надписи."""
     k = 8                                               # пикселей на мм
-    W, H = 157 * k, 74 * k
+    W, H = 157 * k, 70 * k
     S = 2                                               # сглаживание
-    im = Image.new('RGB', (W * S, H * S), (238, 236, 234))
+    im = Image.new('RGB', (W * S, H * S), (16, 16, 18))
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle((0, 0, W * S - 1, H * S - 1), radius=9 * k * S, fill=(16, 16, 18))
-    d.rounded_rectangle((1.6 * k * S, 1.6 * k * S, W * S - 1.6 * k * S, H * S - 1.6 * k * S), radius=7.5 * k * S, outline=(34, 34, 38), width=2 * S)
     P = lambda x, y: (x * k * S, y * k * S)
-    white, grey = (226, 226, 224), (150, 150, 152)
-    # указатель над ручкой (на чертеже — контурный треугольник, чуть правее оси ручки)
-    d.polygon([P(26.6, 19.5), P(24.2, 13.5), P(29.0, 13.5)], outline=white, width=2 * S)
-    # кольцевые лампы и подписи над клавишами
-    for x in (64, 95.6):
-        d.ellipse((P(x - 3.4, 12.8 - 3.4), P(x + 3.4, 12.8 + 3.4)), outline=(110, 110, 116), width=2 * S, fill=(26, 26, 30))
-    f = _font(int(2.9 * k * S), True)
-    for txt, x in (('СЕТЬ', 64), ('АВАРИЯ', 95.6)):
+    white, grey = (232, 232, 230), (214, 214, 212)
+    # указатель над ручкой — контурный треугольник вершиной вниз
+    d.polygon([P(25.9 - 3.6, 12.5), P(25.9 + 3.6, 12.5), P(25.9, 19.5)], outline=white, width=2 * S)
+    # кольцевые лампы над клавишами L1 и L3
+    for x in (63, 93):
+        d.ellipse((P(x - 4.9, 11.8 - 4.9), P(x + 4.9, 11.8 + 4.9)), outline=white, width=int(1.3 * k * S), fill=(20, 20, 22))
+    f = _font(int(3.3 * k * S), True)
+    for txt, x in (('СЕТЬ', 62.5), ('АВАРИЯ', 92.5)):
         w = d.textlength(txt, font=f)
-        d.text((x * k * S - w / 2, 21 * k * S), txt, font=f, fill=grey)
-    # обозначения фаз под клавишами
-    f2 = _font(int(3.4 * k * S), True)
-    for n, x in zip(('L1', 'L2', 'L3'), (61.4, 79.3, 98.2)):
+        d.text((x * k * S - w / 2, 20.5 * k * S), txt, font=f, fill=grey)
+    f2 = _font(int(3.6 * k * S), True)
+    for n, x in zip(('L1', 'L2', 'L3'), (59.5, 78.5, 96.8)):
         w = d.textlength(n, font=f2)
-        d.text((x * k * S - w / 2, 59 * k * S), n, font=f2, fill=grey)
+        d.text((x * k * S - w / 2, 58 * k * S), n, font=f2, fill=grey)
     im.resize((W, H), Image.LANCZOS).save(os.path.join(TEX, 'SEB-5101_panel.png'))
 
 
@@ -91,10 +89,10 @@ def polis_knob():
     for i in range(0, 31):
         a = _m.radians(-135 + 9 * i)
         big = i % 5 == 0
-        r0, r1 = (0.55 if big else 0.70) * c, 0.90 * c
+        r0, r1 = (0.40 if big else 0.55) * c, 0.70 * c
         d.line([(c + r0 * _m.sin(a), c - r0 * _m.cos(a)), (c + r1 * _m.sin(a), c - r1 * _m.cos(a))], fill=(55, 55, 60), width=(20 if big else 10) * S)
-    d.line([(c, c), (c, c - 0.42 * c)], fill=(55, 55, 60), width=22 * S)
-    d.ellipse((c - 0.10 * c, c - 0.10 * c, c + 0.10 * c, c + 0.10 * c), fill=(120, 120, 124))
+    # указатель — короткая скруглённая метка у верхнего края (на чертеже паспорта — вертикальный паз под указателем-треугольником)
+    d.rounded_rectangle((c - 0.055 * c, c - 0.86 * c, c + 0.055 * c, c - 0.50 * c), radius=0.055 * c, fill=(40, 40, 44))
     im.resize((N, N), Image.LANCZOS).save(os.path.join(TEX, 'SEB-5101_knob.png'))
 
 
